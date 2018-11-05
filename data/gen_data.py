@@ -35,86 +35,48 @@ def gen_image(h,i,text,length):
     '''
     generate a sample accoding to text and length
     '''
-    width = int(35*length+10)
-    height = 40
+    width = int(11*length)
+    height = 25
    
-
-    img = Image.new('RGB',(width,height),(255,255,255))
+    img = Image.new('RGB',(width,height))
     draw = ImageDraw.Draw(img)
     imgs = []
 
-    for k in range(1):
-        fontsize = int(35+random.random())
-        font = ImageFont.truetype('fonts/fz.ttf', fontsize)
-        w0 = random.uniform(4,8)# align left
-        h0 = (height - fontsize) // 2+random.uniform(0,1)  # start y
-        draw.text((w0, h0), text, (0, 0, 0), font=font)
+    for k in range(10):
+        fontsize = int(16+random.random())
+        font = ImageFont.truetype('fonts/微软雅黑.ttf', fontsize)
+        w0 = 2# align left
+        if length>8:
+            w0=6
+        elif length>15:
+            w0=10
+        elif length>20:
+            w0=14
+        h0 = (height - fontsize) // 3  # start y
+        draw.text((w0, h0), text, (255,255,255), font=font)
         img = np.array(img)
-        r = random.uniform(0,1.5)
-        #img_rotate = transform.rotate(img,r)
-        imgs.append(img)
-        #imgs.append(img_rotate)
-        # #add gauss noise
         img_noise = random_noise(img,mode='gaussian')
         imgs.append(img_noise)
-        # #rotate
-        # r = random.uniform(0,1.5)
-        # img_rotate = transform.rotate(img_noise,r)
-        # imgs.append(img_rotate)
-        # r = random.uniform(0,1.5)
-        # img_rotate2 = transform.rotate(img_noise,-r)
-        # imgs.append(img_rotate2)
-
-        #add poisson noise
-        img_noise2 = random_noise(img,mode='poisson')
-        imgs.append(img_noise2)
-        # #rotate
-        # r = random.uniform(0,1.5)
-        # img_rotate = transform.rotate(img_noise2,r)
-        # imgs.append(img_rotate)
-        # r = random.uniform(0,1.5)
-        # img_rotate2 = transform.rotate(img_noise2,-r)
-        # imgs.append(img_rotate2)
 
     for j in range(len(imgs)):
         io.imsave('sample/'+str(i)+"_"+str(j)+".jpg",imgs[j])
-        h.write(str(i)+"_"+str(j)+".jpg"+' '+text+'\n')
+        h.write(str(i)+"_"+str(j)+".jpg"+'*'+text+'\n')
 
     return len(imgs)
 
 
-'''
-generate numbers ,English characters and chinese characters;
-you can uncomment it to generate train data;
-`items.txt` is the file of lines you want to generate
-'''
-# with open('items.txt','r') as f:
-#     lines = f.readlines()
-
-# print("Begin Generating Data:")
-# nums = 0
-# for (i,line) in enumerate(lines):
-#     length = get_len(line)
-#     num = gen_image(i,line,length)
-#     nums +=num
-# print("Generate %d images!!!!"%nums)
-# print("End Generating.")
-
-'''
-generate numbers and English characters 
-'''
 print("Begin Generating Data:")
 nums = 0
 vocab = ['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f','g','h','i','j','k',
-                'l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
-numbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+        'l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','A','B','C','D','E','F','G',
+        'H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','/','_','#',' ']
 with open('items2.txt','w') as g:
     h = open('labels2.txt','w')
-    for i in range(10000):
-        m = random.randint(4,8)
+    for i in range(5000):
+        m = random.randint(10,20)
         text = ''.join(random.sample(vocab,m))#m个char,不定长
         print(text)
-        num  = gen_image(h,i,text,m/2)
+        num  = gen_image(h,i,text,m)
         nums +=num
         g.write(text+'\n')
     h.close()
