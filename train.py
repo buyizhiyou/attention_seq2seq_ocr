@@ -14,7 +14,7 @@ import tensorflow as tf
 import Levenshtein
 from editdistance import edit
 
-os.environ['VISIBLE_CUDA_DEVICES']='0'
+os.environ['VISIBLE_CUDA_DEVICES']='1'
 
 vocab = ['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f','g','h','i','j','k',
         'l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','A','B','C','D','E','F','G',
@@ -59,6 +59,7 @@ def train_seq2seq():
     lr = config.learning_rate
     epoches = config.epoches
     log_path = config.log_path
+    max_length = config.output_max_length
     checkpoint_path = config.checkpoint_path
     pretrained_model = config.pretrained_model
 
@@ -68,7 +69,8 @@ def train_seq2seq():
     #build network and train_step
     conv = vgg16(img)
     encoder_inputs = conv[:,0,:,:]
-    train_outputs,pred_outputs,weights = seq2seq(encoder_inputs,true_labels)
+    train_outputs,weights = seq2seq(encoder_inputs,true_labels,'train')
+    pred_outputs = seq2seq(encoder_inputs,true_labels,'infer')
     global_steps = tf.Variable(0)
 
     loss = tf.contrib.seq2seq.sequence_loss(train_outputs.rnn_output, true_labels, weights=weights)
@@ -117,15 +119,16 @@ def train_seq2seq():
                     batch1 = next(batch)
                     train_img = batch1[0]
                     train_true_labels = batch1[1]
-                    # import pdb; pdb.set_trace()
+
                     global_steps1 = sess.run(global_steps)
                     loss1,_ = sess.run([loss,train_step],feed_dict={img:train_img,true_labels:train_true_labels})
                     summary = sess.run(sum_ops,feed_dict={img:train_img,true_labels:train_true_labels})
+
                     print("epoch:{},step:{},loss:{}".format(epoch,step,loss1))
                     summary_writer.add_summary(summary,global_step=global_steps1)
                     step+=1
 
-                    if step%1000==0:
+                    if step%500==0:
                         print("#############Val###############")
                         Accu = 0
                         j=0
@@ -135,12 +138,13 @@ def train_seq2seq():
                             try:
                                 batch2 = next(batch_val)
                                 val_img=batch2[0]
-                                # labels =np.expand_dims(list(range(batch2[1].shape[1])),axis=0)#according to img's length ,we can get the text length
-                                # val_true_labels = np.repeat(labels,batch_size,axis=0)
-                                val_true_labels = batch2[1]
+                                labels =np.expand_dims(([0]*max_length)+[1],axis=0)#max_length
+                                val_true_labels = np.repeat(labels,batch_size,axis=0)#random labels
+                                val_true_labels2 = batch2[1]#true labels
+
                                 pred_outputs1 = sess.run([pred_outputs],feed_dict={img:val_img,true_labels:val_true_labels})
                                 y_pred = pred_outputs1[0].sample_id
-                                accu1 = accu(val_true_labels,y_pred)
+                                accu1 = accu(val_true_labels2,y_pred)
                                 Accu+=accu1
                                 j+=1
                                 print("   Accu:{}".format(accu1))

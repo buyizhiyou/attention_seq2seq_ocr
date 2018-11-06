@@ -25,6 +25,7 @@ idx2vocab[1]='END'
 idx2vocab[2]='UNKNOWN'
 idx2vocab[3]='PADDING'
 
+
 def load_data(path):
     def labels_to_vector(labels):
         # res=[0]#'START'
@@ -64,6 +65,7 @@ def batchify(data,batch_size):
             images = list(map(lambda x:np.expand_dims(x[0],0),group[i:i+batch_size]))
             batch_images = np.concatenate(images,0)
             seq_len = max([len(x[1]) for x in group[i:i+batch_size]])
+
             def preprocess(x):
                 arr = np.array(x[1])
                 pad = np.pad(arr,(0,seq_len-arr.shape[0]),'constant',constant_values=3)
@@ -72,9 +74,10 @@ def batchify(data,batch_size):
             batch_labels = np.concatenate(labels,0)
             if batch_images.shape[0]!=batch_size:
                 continue
-            batch = (batch_images,batch_labels,seq_len)
+            batch = (batch_images,batch_labels)
             
             yield batch
+
 
 
 

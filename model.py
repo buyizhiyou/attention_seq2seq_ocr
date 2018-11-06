@@ -17,7 +17,7 @@ build vgg16+seq2seq(+attention) model
 
 # tf.enable_eager_execution()
 
-def seq2seq(inp,output):
+def seq2seq(inp,output,mode):
     vocab_size = config.vocab_size#70
     embed_dim = config.embed_dim#100
     num_units = config.num_units#256
@@ -27,14 +27,16 @@ def seq2seq(inp,output):
     start_tokens = tf.zeros([batch_size], dtype=tf.int32)
     train_output = tf.concat([tf.expand_dims(start_tokens, 1), output], 1)#add START
     output_lengths = tf.reduce_sum(tf.to_int32(tf.not_equal(train_output, 3)), 1)-1#delete PADDING(3),END(1)
-
-    output_embed = tf.contrib.layers.embed_sequence(
+    if mode =='train':
+        output_embed = tf.contrib.layers.embed_sequence(
         train_output, vocab_size=vocab_size, embed_dim=embed_dim, scope='embed')
-    with tf.variable_scope('embed',reuse=tf.AUTO_REUSE):
-        embeddings = tf.get_variable('embeddings')
+    elif mode == 'infer':
+        with tf.variable_scope('embed',reuse=True):
+            embeddings = tf.get_variable('embeddings')
+        # embeddings = [n for n in tf.global_variables() if 'embeddings' in n.name][0]
     def encode(inp):#inp:shape=(4,?, 512)
         enc_init_shape = [batch_size, num_units]
-        with tf.variable_scope('encode'):
+        with tf.variable_scope('encode', reuse=tf.AUTO_REUSE):
             with tf.variable_scope('forward'):
                 lstm_cell_fw = tf.nn.rnn_cell.LSTMCell(num_units)
                 init_fw = tf.nn.rnn_cell.LSTMStateTuple(\
@@ -60,7 +62,7 @@ def seq2seq(inp,output):
         return tf.concat(output,2)#shape=(4,?, 512)
 
     def decode(helper,reuse=None):
-        with tf.variable_scope('decode', reuse=reuse):
+        with tf.variable_scope('decode', reuse=tf.AUTO_REUSE):
             attention_mechanism = tf.contrib.seq2seq.BahdanauAttention(
                 num_units=num_units, memory=encoder_outputs)
             cell = tf.contrib.rnn.LSTMCell(num_units=num_units)
@@ -81,21 +83,22 @@ def seq2seq(inp,output):
 
     with tf.variable_scope('trained'):
         encoder_outputs = encode(inp)
-        train_helper = tf.contrib.seq2seq.TrainingHelper(output_embed, output_lengths)
-        # train_helper = tf.contrib.seq2seq.ScheduledEmbeddingTrainingHelper(
-        #     output_embed, output_lengths, embeddings, 0.3
-        # )
-        pred_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(
-            embeddings, start_tokens=tf.to_int32(start_tokens), end_token=1)
-        train_outputs = decode(train_helper)
-        pred_outputs = decode(pred_helper,reuse=True)
-        # import pdb; pdb.set_trace()
-        # tf.add_to_collection('pred_outputs',pred_outputs)
-        tf.identity(train_outputs.sample_id[0], name='train_outputs_sq')
-        tf.identity(pred_outputs.sample_id[0],name='pred_outputs_sq')
-        weights = tf.to_float(tf.not_equal(train_output[:, :-1], 1))
-        
-    return train_outputs,pred_outputs,weights
+        if mode=='train':
+            train_helper = tf.contrib.seq2seq.TrainingHelper(output_embed, output_lengths)
+            # train_helper = tf.contrib.seq2seq.ScheduledEmbeddingTrainingHelper(
+            #     output_embed, output_lengths, embeddings, 0.3
+            # )
+            train_outputs = decode(train_helper)
+            tf.identity(train_outputs.sample_id[0], name='train_outputs_sq')
+            weights = tf.to_float(tf.not_equal(train_output[:, :-1], 1))
+            return train_outputs,weights
+        elif mode=='infer':
+            pred_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(
+                embeddings, start_tokens=tf.to_int32(start_tokens), end_token=1)
+            pred_outputs = decode(pred_helper,reuse=True)
+        # tf.add_to_collection('pred_outputs',pred_outputs)  
+            tf.identity(pred_outputs.sample_id[0],name='pred_outputs_sq')
+            return pred_outputs
 
 
 if __name__=="__main__":
@@ -110,7 +113,7 @@ if __name__=="__main__":
 
     conv = vgg16(img)
     encoder_inputs = conv[:,0,:,:]
-    train_outputs,pred_outputs,weights = seq2seq(encoder_inputs,true_labels)
+    train_outputs,pred_outputs,weights = seq2seq(encoder_inputs,true_labels,'train')
 
     loss = tf.contrib.seq2seq.sequence_loss(train_outputs.rnn_output, true_labels, weights=weights)
     learning_rate = tf.train.exponential_decay(lr, global_steps, 1000, 0.9)
