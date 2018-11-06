@@ -25,8 +25,6 @@ idx2vocab[1]='END'
 idx2vocab[2]='UNKNOWN'
 idx2vocab[3]='PADDING'
 
-
-
 def load_data(path):
     def labels_to_vector(labels):
         # res=[0]#'START'

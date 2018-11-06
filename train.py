@@ -62,8 +62,8 @@ def train_seq2seq():
     checkpoint_path = config.checkpoint_path
     pretrained_model = config.pretrained_model
 
-    img = tf.placeholder(shape=[batch_size,None,None,3],dtype=tf.float32)
-    true_labels = tf.placeholder(tf.int32,shape=[batch_size,None])
+    img = tf.placeholder(shape=[None,None,None,3],dtype=tf.float32)
+    true_labels = tf.placeholder(tf.int32,shape=[None,None])
 
     #build network and train_step
     conv = vgg16(img)
@@ -117,6 +117,7 @@ def train_seq2seq():
                     batch1 = next(batch)
                     train_img = batch1[0]
                     train_true_labels = batch1[1]
+                    # import pdb; pdb.set_trace()
                     global_steps1 = sess.run(global_steps)
                     loss1,_ = sess.run([loss,train_step],feed_dict={img:train_img,true_labels:train_true_labels})
                     summary = sess.run(sum_ops,feed_dict={img:train_img,true_labels:train_true_labels})
@@ -134,6 +135,8 @@ def train_seq2seq():
                             try:
                                 batch2 = next(batch_val)
                                 val_img=batch2[0]
+                                # labels =np.expand_dims(list(range(batch2[1].shape[1])),axis=0)#according to img's length ,we can get the text length
+                                # val_true_labels = np.repeat(labels,batch_size,axis=0)
                                 val_true_labels = batch2[1]
                                 pred_outputs1 = sess.run([pred_outputs],feed_dict={img:val_img,true_labels:val_true_labels})
                                 y_pred = pred_outputs1[0].sample_id
@@ -151,6 +154,7 @@ def train_seq2seq():
 
 
             #save model checkpoint
+            print("model saved!")
             saver.save(sess,checkpoint_path+'/models.ckpt',global_step=epoch)
 
 if __name__ == "__main__":

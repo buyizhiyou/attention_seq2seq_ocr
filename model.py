@@ -89,8 +89,10 @@ def seq2seq(inp,output):
             embeddings, start_tokens=tf.to_int32(start_tokens), end_token=1)
         train_outputs = decode(train_helper)
         pred_outputs = decode(pred_helper,reuse=True)
-
-        # tf.identity(train_outputs.sample_id[0], name='train_pred')
+        # import pdb; pdb.set_trace()
+        # tf.add_to_collection('pred_outputs',pred_outputs)
+        tf.identity(train_outputs.sample_id[0], name='train_outputs_sq')
+        tf.identity(pred_outputs.sample_id[0],name='pred_outputs_sq')
         weights = tf.to_float(tf.not_equal(train_output[:, :-1], 1))
         
     return train_outputs,pred_outputs,weights
